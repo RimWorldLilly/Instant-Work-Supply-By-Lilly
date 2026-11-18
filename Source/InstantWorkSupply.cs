@@ -66,8 +66,16 @@ namespace Lilly.InstantWorkSupply
                 if (IsReservedPickup(pawn, targetIndex))
                 {
                     Thing target = pawn.CurJob.GetTarget(targetIndex).Thing;
-                    if (target.Position != pawn.Position && !target.def.AffectsRegions)
-                        target.Position = pawn.Position;
+
+                    // Move the pawn to the reserved item. Never change the position
+                    // of a spawned Thing directly; doing so can desynchronize map
+                    // grids and interfere with hauling/stack handling.
+                    if (target != null && target.Spawned && target.Map == pawn.Map &&
+                        target.Position != pawn.Position)
+                    {
+                        pawn.Position = target.Position;
+                        pawn.Notify_Teleported(false, true);
+                    }
                 }
 
                 originalInitAction();
@@ -132,11 +140,6 @@ namespace Lilly.InstantWorkSupply
         {
             Pawn pawn = ___pawn;
             if (pawn == null || !pawn.Spawned || pawn.Map == null)
-                return true;
-
-            // Do not interrupt haul delivery or other carry jobs. Their job drivers
-            // expect the carried thing to remain synchronized with normal pathing.
-            if (pawn.carryTracker?.CarriedThing != null)
                 return true;
 
             PawnPath path = __instance.curPath;

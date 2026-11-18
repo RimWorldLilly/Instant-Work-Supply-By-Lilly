@@ -134,6 +134,11 @@ namespace Lilly.InstantWorkSupply
             if (pawn == null || !pawn.Spawned || pawn.Map == null)
                 return true;
 
+            // Do not interrupt haul delivery or other carry jobs. Their job drivers
+            // expect the carried thing to remain synchronized with normal pathing.
+            if (pawn.carryTracker?.CarriedThing != null)
+                return true;
+
             PawnPath path = __instance.curPath;
             if (path == null || !path.Found)
                 return true;

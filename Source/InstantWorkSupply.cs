@@ -54,7 +54,7 @@ namespace Lilly.InstantWorkSupply
             };
         }
 
-        internal static void TeleportReservedPickup(Toil toil, TargetIndex targetIndex)
+        internal static void TeleportPawnAfterPickup(Toil toil, TargetIndex targetIndex)
         {
             if (toil == null || toil.initAction == null)
                 return;
@@ -63,22 +63,39 @@ namespace Lilly.InstantWorkSupply
             toil.initAction = delegate
             {
                 Pawn pawn = toil.actor;
-                if (IsReservedPickup(pawn, targetIndex))
+                if (!IsReservedPickup(pawn, targetIndex))
                 {
-                    Thing target = pawn.CurJob.GetTarget(targetIndex).Thing;
-
-                    // Move the pawn to the reserved item. Never change the position
-                    // of a spawned Thing directly; doing so can desynchronize map
-                    // grids and interfere with hauling/stack handling.
-                    if (target != null && target.Spawned && target.Map == pawn.Map &&
-                        target.Position != pawn.Position)
-                    {
-                        pawn.Position = target.Position;
-                        pawn.Notify_Teleported(false, true);
-                    }
+                    originalInitAction();
+                    return;
                 }
 
+                Thing target = pawn.CurJob.GetTarget(targetIndex).Thing;
+                if (target == null || !target.Spawned || target.Map != pawn.Map)
+                {
+                    originalInitAction();
+                    return;
+                }
+
+                // Remember the pickup cell, then let vanilla complete the pickup.
+                // The Thing itself is never moved or modified by this patch.
+                Map pickupMap = pawn.Map;
+                IntVec3 pickupPosition = target.Position;
+
                 originalInitAction();
+
+                // Only teleport after vanilla successfully puts an item in the
+                // pawn's carry tracker. This keeps stack counts and carry handling
+                // entirely under vanilla control.
+                if (pawn.Spawned &&
+                    pawn.Map == pickupMap &&
+                    pawn.carryTracker.CarriedThing != null &&
+                    pickupPosition.IsValid &&
+                    pickupPosition.InBounds(pickupMap) &&
+                    pawn.Position != pickupPosition)
+                {
+                    pawn.Position = pickupPosition;
+                    pawn.Notify_Teleported(false, true);
+                }
             };
         }
     }
@@ -122,7 +139,7 @@ namespace Lilly.InstantWorkSupply
         private static void Postfix(object[] __args, ref Toil __result)
         {
             if (__args != null && __args.Length > 0 && __args[0] is TargetIndex targetIndex)
-                InstantWorkSupplyUtility.TeleportReservedPickup(__result, targetIndex);
+                InstantWorkSupplyUtility.TeleportPawnAfterPickup(__result, targetIndex);
         }
     }
 

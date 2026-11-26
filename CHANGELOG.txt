@@ -1,6 +1,13 @@
+v1.2.0
+
+- Added separate target-scope toggles for player-faction, other-faction and factionless pawns.
+- Defaults to player-faction pawns only; other factions and factionless pawns remain unaffected unless enabled.
+
+----------------------------------------
+
 v1.1.0
 
-- 예약 아이템까지의 이동 생략 시 JobDriver 재진입을 제거해 한 틱 내 반복 작업 시작 오류 수정
+- Reserved pickup travel no longer re-enters the JobDriver during the same tick.
 
 ----------------------------------------
 

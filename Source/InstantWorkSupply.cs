@@ -35,22 +35,34 @@ namespace Lilly.InstantWorkSupply
 
         public override void DoSettingsWindowContents(Rect inRect)
         {
+            InstantWorkSupplySettings settings = CurrentSettings;
+            if (settings == null)
+                return;
+
+            bool affectPlayerFactionPawns = settings.AffectPlayerFactionPawns;
+            bool affectOtherFactionPawns = settings.AffectOtherFactionPawns;
+            bool affectFactionlessPawns = settings.AffectFactionlessPawns;
+
             Listing_Standard listing = new Listing_Standard();
             listing.Begin(inRect);
             listing.Label("Pawn target scope / 적용 대상");
             listing.CheckboxLabeled(
                 "Player-faction pawns / 플레이어 세력 폰",
-                ref CurrentSettings.AffectPlayerFactionPawns,
+                ref affectPlayerFactionPawns,
                 "Colonists, animals and mechanoids belonging to the player faction.");
             listing.CheckboxLabeled(
                 "Other-faction pawns / 다른 세력 폰",
-                ref CurrentSettings.AffectOtherFactionPawns,
+                ref affectOtherFactionPawns,
                 "Pawns belonging to factions other than the player faction.");
             listing.CheckboxLabeled(
                 "Factionless pawns / 소속 세력이 없는 폰",
-                ref CurrentSettings.AffectFactionlessPawns,
+                ref affectFactionlessPawns,
                 "Pawns that do not belong to any faction, including wild animals.");
             listing.End();
+
+            settings.AffectPlayerFactionPawns = affectPlayerFactionPawns;
+            settings.AffectOtherFactionPawns = affectOtherFactionPawns;
+            settings.AffectFactionlessPawns = affectFactionlessPawns;
         }
     }
 

@@ -6,6 +6,7 @@ using HarmonyLib;
 using RimWorld;
 using Verse;
 using Verse.AI;
+using UnityEngine;
 
 namespace Lilly.InstantWorkSupply
 {
@@ -18,11 +19,77 @@ namespace Lilly.InstantWorkSupply
         }
     }
 
+    public sealed class InstantWorkSupplyMod : Mod
+    {
+        internal static InstantWorkSupplySettings CurrentSettings { get; private set; }
+
+        public InstantWorkSupplyMod(ModContentPack content) : base(content)
+        {
+            CurrentSettings = GetSettings<InstantWorkSupplySettings>();
+        }
+
+        public override string SettingsCategory()
+        {
+            return "Super Blink";
+        }
+
+        public override void DoSettingsWindowContents(Rect inRect)
+        {
+            Listing_Standard listing = new Listing_Standard();
+            listing.Begin(inRect);
+            listing.Label("Pawn target scope / 적용 대상");
+            listing.CheckboxLabeled(
+                "Player-faction pawns / 플레이어 세력 폰",
+                ref CurrentSettings.AffectPlayerFactionPawns,
+                "Colonists, animals and mechanoids belonging to the player faction.");
+            listing.CheckboxLabeled(
+                "Other-faction pawns / 다른 세력 폰",
+                ref CurrentSettings.AffectOtherFactionPawns,
+                "Pawns belonging to factions other than the player faction.");
+            listing.CheckboxLabeled(
+                "Factionless pawns / 소속 세력이 없는 폰",
+                ref CurrentSettings.AffectFactionlessPawns,
+                "Pawns that do not belong to any faction, including wild animals.");
+            listing.End();
+        }
+    }
+
+    public sealed class InstantWorkSupplySettings : ModSettings
+    {
+        public bool AffectPlayerFactionPawns = true;
+        public bool AffectOtherFactionPawns = false;
+        public bool AffectFactionlessPawns = false;
+
+        public override void ExposeData()
+        {
+            base.ExposeData();
+            Scribe_Values.Look(ref AffectPlayerFactionPawns, "affectPlayerFactionPawns", true);
+            Scribe_Values.Look(ref AffectOtherFactionPawns, "affectOtherFactionPawns", false);
+            Scribe_Values.Look(ref AffectFactionlessPawns, "affectFactionlessPawns", false);
+        }
+    }
+
     internal static class InstantWorkSupplyUtility
     {
+        internal static bool ShouldAffectPawn(Pawn pawn)
+        {
+            if (pawn == null)
+                return false;
+
+            InstantWorkSupplySettings settings = InstantWorkSupplyMod.CurrentSettings;
+            if (settings == null)
+                return pawn.Faction == Faction.OfPlayer;
+
+            if (pawn.Faction == Faction.OfPlayer)
+                return settings.AffectPlayerFactionPawns;
+            if (pawn.Faction != null)
+                return settings.AffectOtherFactionPawns;
+            return settings.AffectFactionlessPawns;
+        }
+
         internal static bool IsReservedPickup(Pawn pawn, TargetIndex targetIndex)
         {
-            if (pawn == null || pawn.Map == null || pawn.CurJob == null ||
+            if (!ShouldAffectPawn(pawn) || pawn.Map == null || pawn.CurJob == null ||
                 pawn.carryTracker.CarriedThing != null)
                 return false;
 
@@ -156,7 +223,8 @@ namespace Lilly.InstantWorkSupply
         private static bool Prefix(Pawn_PathFollower __instance, Pawn ___pawn)
         {
             Pawn pawn = ___pawn;
-            if (pawn == null || !pawn.Spawned || pawn.Map == null)
+            if (pawn == null || !pawn.Spawned || pawn.Map == null ||
+                !InstantWorkSupplyUtility.ShouldAffectPawn(pawn))
                 return true;
 
             PawnPath path = __instance.curPath;
